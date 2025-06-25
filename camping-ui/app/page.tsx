@@ -2,49 +2,23 @@
 
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Calendar, Bell, MapPin, Clock, Users, CheckCircle, Star, ArrowRight } from "lucide-react"
+import { Calendar, Bell, MapPin, Clock, Users, CheckCircle, Star, ArrowRight, Loader2 } from "lucide-react"
 import { SparklesCore } from "@/components/sparkles"
 import Navbar from "@/components/navbar"
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 
-const popularSites = [
-	{
-		name: "지리산 둘레길 자연휴양림",
-		location: "전라남도 구례군",
-		rating: 4.8,
-		reviews: 156,
-		image: "/images/forest1.jpg",
-		available: true,
-		price: "₩25,000",
-	},
-	{
-		name: "설악산 자연휴양림",
-		location: "강원도 속초시",
-		rating: 4.9,
-		reviews: 203,
-		image: "/images/forest2.jpg",
-		available: false,
-		price: "₩30,000",
-	},
-	{
-		name: "오대산 자연휴양림",
-		location: "강원도 평창군",
-		rating: 4.7,
-		reviews: 134,
-		image: "/images/forest3.jpg",
-		available: true,
-		price: "₩28,000",
-	},
-	{
-		name: "월악산 자연휴양림",
-		location: "충청북도 단양군",
-		rating: 4.6,
-		reviews: 98,
-		image: "/images/forest4.jpg",
-		available: true,
-		price: "₩22,000",
-	},
-]
+interface ForestData {
+	id: string
+	name: string
+	type: string
+	location: string
+	image: string
+	description: string
+	reservationStatus: string
+	rating?: number
+	reviews?: number
+	price?: string
+}
 
 const features = [
 	{
@@ -66,12 +40,38 @@ const features = [
 		icon: <MapPin className="h-8 w-8" />,
 		title: "다중 지역 설정",
 		description: "여러 자연휴양림을 동시에 모니터링하여 더 많은 기회를 잡을 수 있습니다."
-	},
+	}
 ]
 
 export default function Home() {
 	const [selectedDate, setSelectedDate] = useState("")
 	const [selectedLocation, setSelectedLocation] = useState("")
+	const [forests, setForests] = useState<ForestData[]>([])
+	const [loading, setLoading] = useState(true)
+	const [error, setError] = useState<string | null>(null)
+
+	useEffect(() => {
+		fetchForestData()
+	}, [])
+
+	const fetchForestData = async () => {
+		try {
+			setLoading(true)
+			const response = await fetch('/api/forests?page=1')
+			const result = await response.json()
+			
+			if (result.success) {
+				setForests(result.data)
+			} else {
+				setError('자연휴양림 데이터를 가져오는데 실패했습니다.')
+			}
+		} catch (err) {
+			setError('서버 오류가 발생했습니다.')
+			console.error('Error fetching forest data:', err)
+		} finally {
+			setLoading(false)
+		}
+	}
 
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-emerald-900 antialiased relative overflow-hidden">
@@ -214,56 +214,85 @@ export default function Home() {
 							className="text-center mb-16"
 						>
 							<h2 className="text-4xl font-bold text-white mb-4">
-								인기 자연휴양림
+								실시간 자연휴양림 정보
 							</h2>
 							<p className="text-xl text-green-200">
-								많은 분들이 찾는 인기 자연휴양림들을 미리 확인해보세요
+								숲나들e에서 제공하는 최신 자연휴양림 정보를 확인해보세요
 							</p>
 						</motion.div>
 
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-							{popularSites.map((site, index) => (
-								<motion.div
-									key={index}
-									initial={{ opacity: 0, y: 30 }}
-									whileInView={{ opacity: 1, y: 0 }}
-									transition={{ duration: 0.8, delay: index * 0.1 }}
-									className="bg-white/10 backdrop-blur-md rounded-xl overflow-hidden hover:bg-white/20 transition-all"
+						{loading ? (
+							<div className="flex justify-center items-center py-20">
+								<Loader2 className="h-8 w-8 text-green-400 animate-spin mr-3" />
+								<span className="text-green-200 text-lg">자연휴양림 정보를 불러오는 중...</span>
+							</div>
+						) : error ? (
+							<div className="text-center py-20">
+								<p className="text-red-400 text-lg mb-4">{error}</p>
+								<Button 
+									onClick={fetchForestData}
+									className="bg-green-600 hover:bg-green-700 text-white"
 								>
-									<div className="h-48 bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
-										<MapPin className="h-16 w-16 text-white/50" />
-									</div>
-									<div className="p-6">
-										<div className="flex items-center justify-between mb-2">
-											<div className="flex items-center">
-												<Star className="h-4 w-4 text-yellow-400 mr-1" />
-												<span className="text-white font-semibold">{site.rating}</span>
-												<span className="text-green-200 text-sm ml-1">({site.reviews})</span>
+									다시 시도
+								</Button>
+							</div>
+						) : (
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+								{forests.slice(0, 8).map((forest, index) => (
+									<motion.div
+										key={forest.id}
+										initial={{ opacity: 0, y: 30 }}
+										whileInView={{ opacity: 1, y: 0 }}
+										transition={{ duration: 0.8, delay: index * 0.1 }}
+										className="bg-white/10 backdrop-blur-md rounded-xl overflow-hidden hover:bg-white/20 transition-all"
+									>
+										<div className="h-48 bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center relative overflow-hidden">
+											<img 
+												src={forest.image} 
+												alt={forest.name}
+												className="w-full h-full object-cover"
+												onError={(e) => {
+													const target = e.target as HTMLImageElement
+													target.style.display = 'none'
+													target.parentElement!.innerHTML = '<MapPin className="h-16 w-16 text-white/50" />'
+												}}
+											/>
+											<div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+												{forest.type}
 											</div>
-											<span className="text-green-400 font-bold">{site.price}</span>
 										</div>
-										<h3 className="text-lg font-bold text-white mb-2">{site.name}</h3>
-										<p className="text-green-200 text-sm mb-4">{site.location}</p>
-										<div className="flex items-center justify-between">
-											<span className={`text-sm px-2 py-1 rounded-full ${
-												site.available 
-													? 'bg-green-500/20 text-green-300' 
-													: 'bg-red-500/20 text-red-300'
-											}`}>
-												{site.available ? '예약 가능' : '예약 불가'}
-											</span>
-											<Button 
-												size="sm" 
-												variant="outline" 
-												className="text-green-400 border-green-400 hover:bg-green-400 hover:text-white"
-											>
-												<ArrowRight className="h-4 w-4" />
-											</Button>
+										<div className="p-6">
+											<div className="flex items-center justify-between mb-2">
+												<div className="flex items-center">
+													<Star className="h-4 w-4 text-yellow-400 mr-1" />
+													<span className="text-white font-semibold">{forest.rating?.toFixed(1) || '4.5'}</span>
+													<span className="text-green-200 text-sm ml-1">({forest.reviews || 100})</span>
+												</div>
+												<span className="text-green-400 font-bold">{forest.price || '₩25,000'}</span>
+											</div>
+											<h3 className="text-lg font-bold text-white mb-2">{forest.name}</h3>
+											<p className="text-green-200 text-sm mb-4">{forest.location}</p>
+											<div className="flex items-center justify-between">
+												<span className={`text-sm px-2 py-1 rounded-full ${
+													forest.reservationStatus.includes('접수중') 
+														? 'bg-green-500/20 text-green-300' 
+														: 'bg-red-500/20 text-red-300'
+												}`}>
+													{forest.reservationStatus}
+												</span>
+												<Button 
+													size="sm" 
+													variant="outline" 
+													className="text-green-400 border-green-400 hover:bg-green-400 hover:text-white"
+												>
+													<ArrowRight className="h-4 w-4" />
+												</Button>
+											</div>
 										</div>
-									</div>
-								</motion.div>
-							))}
-						</div>
+									</motion.div>
+								))}
+							</div>
+						)}
 					</div>
 				</section>
 
