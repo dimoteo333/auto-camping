@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Calendar, Bell, MapPin, Clock, Users, CheckCircle, Star, ArrowRight, Loader2 } from "lucide-react"
+import { Calendar, Bell, MapPin, Clock, Users, CheckCircle, Star, ArrowRight, Loader2, CalendarHeart } from "lucide-react"
 import { SparklesCore } from "@/components/sparkles"
 import Navbar from "@/components/navbar"
 import { useRef, useState, useEffect } from "react"
@@ -16,7 +16,7 @@ interface ForestData {
 	description: string
 	reservationStatus: string
 	rating?: number
-	reviews?: number
+	details?: string
 	price?: string
 }
 
@@ -43,16 +43,59 @@ const features = [
 	}
 ]
 
+const AREA_OPTIONS = [
+	{ value: '', label: '지역 선택' },
+	{ value: '1', label: '서울/인천/경기' },
+	{ value: '2', label: '강원' },
+	{ value: '3', label: '충북' },
+	{ value: '4', label: '대전/충남' },
+	{ value: '5', label: '전북' },
+	{ value: '6', label: '광주/전남' },
+	{ value: '7', label: '대구/경북' },
+	{ value: '8', label: '부산/경남' },
+	{ value: '9', label: '제주' },
+]
+
+const ONESIGNAL_APP_ID = "f81b6be5-96b2-420b-a798-b7d1cac08497"; // 실제 발급받은 App ID로 교체
+
+declare global {
+	interface Window {
+		OneSignal: any;
+	}
+}
+
 export default function Home() {
 	const [selectedDate, setSelectedDate] = useState("")
 	const [selectedLocation, setSelectedLocation] = useState("")
 	const [forests, setForests] = useState<ForestData[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	const [showModal, setShowModal] = useState(false)
+	const [formError, setFormError] = useState<string | null>(null)
 
 	useEffect(() => {
 		fetchForestData()
 	}, [])
+
+	useEffect(() => {
+		if (typeof window !== "undefined" && !window.OneSignal) {
+			const script = document.createElement("script");
+			script.src = "https://cdn.onesignal.com/sdks/OneSignalSDK.js";
+			script.async = true;
+			document.head.appendChild(script);
+
+			script.onload = () => {
+				window.OneSignal = window.OneSignal || [];
+				window.OneSignal.push(function () {
+					window.OneSignal.init({
+						appId: ONESIGNAL_APP_ID,
+						notifyButton: { enable: true },
+						serviceWorkerPath: "/OneSignalSDKWorker.js",
+					});
+				});
+			};
+		}
+	}, []);
 
 	const fetchForestData = async () => {
 		try {
@@ -71,6 +114,21 @@ export default function Home() {
 		} finally {
 			setLoading(false)
 		}
+	}
+
+	const handleAlarmClick = () => {
+		if (!selectedDate || !selectedLocation) {
+			setFormError('날짜와 지역을 모두 선택해주세요.')
+			return
+		}
+		setFormError(null)
+
+		if (typeof window !== "undefined" && window.OneSignal) {
+			window.OneSignal.push(function () {
+				window.OneSignal.showSlidedownPrompt();
+			});
+		}
+		setShowModal(true)
 	}
 
 	return (
@@ -136,30 +194,65 @@ export default function Home() {
 										onChange={(e) => setSelectedLocation(e.target.value)}
 										className="w-full pl-10 pr-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-400"
 									>
-										<option value="">지역 선택</option>
-										<option value="강원도">강원도</option>
-										<option value="경기도">경기도</option>
-										<option value="충청북도">충청북도</option>
-										<option value="충청남도">충청남도</option>
-										<option value="전라북도">전라북도</option>
-										<option value="전라남도">전라남도</option>
-										<option value="경상북도">경상북도</option>
-										<option value="경상남도">경상남도</option>
-										<option value="제주도">제주도</option>
+										{AREA_OPTIONS.map(opt => (
+											<option key={opt.value} value={opt.value}>{opt.label}</option>
+										))}
 									</select>
 								</div>
 								<Button 
 									size="lg" 
 									className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 h-auto"
+									onClick={handleAlarmClick}
+									disabled={!selectedDate || !selectedLocation}
 								>
 									<Bell className="mr-2 h-5 w-5" />
 									알림 설정
 								</Button>
 							</div>
+							{formError && <p className="text-red-300 text-sm mb-2">{formError}</p>}
 							<p className="text-green-200 text-sm">
 								원하는 날짜와 지역을 선택하면 빈자리가 생길 때 즉시 알림을 받을 수 있습니다
 							</p>
 						</motion.div>
+					</div>
+				</section>
+
+				{/* 서비스 소개 섹션 */}
+				<section className="py-20 px-6 bg-gradient-to-r from-green-100/10 to-emerald-100/10">
+					<div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-10">
+						{/* 숲 SVG 일러스트 */}
+						<div className="flex-1 flex justify-center">
+							<svg width="220" height="180" viewBox="0 0 220 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<ellipse cx="110" cy="170" rx="90" ry="10" fill="#A7F3D0"/>
+								<ellipse cx="60" cy="110" rx="40" ry="50" fill="#34D399"/>
+								<ellipse cx="160" cy="120" rx="50" ry="60" fill="#059669"/>
+								<ellipse cx="110" cy="90" rx="60" ry="70" fill="#10B981"/>
+								<rect x="95" y="120" width="30" height="50" rx="10" fill="#6B4F1D"/>
+							</svg>
+						</div>
+						{/* 서비스 설명 */}
+						<div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-8">
+							<div className="flex flex-col items-center text-center">
+								<CalendarHeart className="h-10 w-10 text-green-500 mb-2" />
+								<h4 className="text-lg font-bold text-green-900 mb-1">자동 예약</h4>
+								<p className="text-green-800 text-sm">원하는 날짜와 조건을 입력하면, 빈자리가 생길 때 자동으로 예약을 진행합니다.</p>
+							</div>
+							<div className="flex flex-col items-center text-center">
+								<Bell className="h-10 w-10 text-emerald-500 mb-2" />
+								<h4 className="text-lg font-bold text-green-900 mb-1">실시간 알림</h4>
+								<p className="text-green-800 text-sm">실시간 모니터링을 통해 빈자리가 생기면 즉시 알림을 보내드립니다.</p>
+							</div>
+							<div className="flex flex-col items-center text-center">
+								<MapPin className="h-10 w-10 text-green-400 mb-2" />
+								<h4 className="text-lg font-bold text-green-900 mb-1">다중 지역 모니터링</h4>
+								<p className="text-green-800 text-sm">여러 자연휴양림을 동시에 모니터링하여 더 많은 기회를 잡을 수 있습니다.</p>
+							</div>
+							<div className="flex flex-col items-center text-center">
+								<CheckCircle className="h-10 w-10 text-emerald-400 mb-2" />
+								<h4 className="text-lg font-bold text-green-900 mb-1">간편한 사용</h4>
+								<p className="text-green-800 text-sm">회원가입 없이도 간편하게 알림 신청이 가능합니다.</p>
+							</div>
+						</div>
 					</div>
 				</section>
 
@@ -266,12 +359,16 @@ export default function Home() {
 												<div className="flex items-center">
 													<Star className="h-4 w-4 text-yellow-400 mr-1" />
 													<span className="text-white font-semibold">{forest.rating?.toFixed(1) || '4.5'}</span>
-													<span className="text-green-200 text-sm ml-1">({forest.reviews || 100})</span>
 												</div>
 												<span className="text-green-400 font-bold">{forest.price || '₩25,000'}</span>
 											</div>
 											<h3 className="text-lg font-bold text-white mb-2">{forest.name}</h3>
-											<p className="text-green-200 text-sm mb-4">{forest.location}</p>
+											<p className="text-green-200 text-sm mb-2">{forest.location}</p>
+											{forest.details && (
+												<p className="text-green-300 text-xs mb-4 line-clamp-2">
+													{forest.details}
+												</p>
+											)}
 											<div className="flex items-center justify-between">
 												<span className={`text-sm px-2 py-1 rounded-full ${
 													forest.reservationStatus.includes('접수중') 
@@ -330,6 +427,19 @@ export default function Home() {
 						</motion.div>
 					</div>
 				</section>
+
+				{/* 알림 성공 모달 */}
+				{showModal && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+						<div className="bg-white rounded-xl shadow-lg p-8 max-w-xs w-full text-center">
+							<h3 className="text-2xl font-bold text-green-700 mb-4">알림 신청 완료!</h3>
+							<p className="text-green-900 mb-6">빈자리가 생기면<br/>알림을 보내드릴게요.</p>
+							<Button className="bg-green-600 hover:bg-green-700 text-white w-full" onClick={() => setShowModal(false)}>
+								확인
+							</Button>
+						</div>
+					</div>
+				)}
 			</div>
 		</main>
 	)
